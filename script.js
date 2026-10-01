@@ -1,4 +1,3 @@
-// ---------- MOVIE DATABASE ----------
 const movies = [
     { id: 1, title: "Dune: Part Two", genre: "Sci-Fi", duration: "166 min", rating: "PG-13", price: 14.50, posterColor: "linear-gradient(145deg, #c49a6c, #6b3e1f)", imageBg: "url('https://placehold.co/600x400/1f2a3a/white?text=DUNE+2')" },
     { id: 2, title: "Kung Fu Panda 4", genre: "Animation", duration: "94 min", rating: "PG", price: 12.00, posterColor: "linear-gradient(145deg, #f5a623, #d97a1c)", imageBg: "url('https://placehold.co/600x400/2c3e2f/white?text=KUNG+FU')" },
@@ -8,8 +7,6 @@ const movies = [
     { id: 6, title: "Challengers", genre: "Drama/Sport", duration: "131 min", rating: "R", price: 14.00, posterColor: "linear-gradient(145deg, #9b6b9e, #5d3a5e)", imageBg: "url('https://placehold.co/600x400/4a2c4a/white?text=CHALLENGERS')" }
 ];
 
-// seat layout for each movie: we will generate a matrix 6 rows x 8 cols (some seats blocked)
-// For simplicity: each movie has own seat map: but for demo we create a seat map factory with random unavailable (some prebooked)
 function generateSeatMap() {
     let seats = [];
     const rows = 6;
@@ -17,7 +14,6 @@ function generateSeatMap() {
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const seatId = `${String.fromCharCode(65+r)}${c+1}`;
-            // randomly pre-book 12% of seats to simulate sold
             let isBooked = false;
             const rand = Math.random() * 100;
             if (rand < 12) isBooked = true;
@@ -32,12 +28,9 @@ function generateSeatMap() {
     return seats;
 }
 
-// Global state: each movie gets its own seat map copy from function
-let movieSeats = {}; // key: movieId -> array of seat objects
-// Cart items: array of { id, movieId, movieTitle, seats: [seatId], totalPrice, ticketQty }
+let movieSeats = {}; 
 let cart = [];
 
-// helper to load or init seat map for movie
 function getSeatsForMovie(movieId) {
     if (!movieSeats[movieId]) {
         movieSeats[movieId] = generateSeatMap();
@@ -45,18 +38,16 @@ function getSeatsForMovie(movieId) {
     return movieSeats[movieId];
 }
 
-// update seat map after booking (mark seats as unavailable)
 function markSeatsAsTaken(movieId, seatIds) {
     const seats = getSeatsForMovie(movieId);
     seatIds.forEach(seatId => {
         const seatObj = seats.find(s => s.id === seatId);
         if (seatObj) seatObj.available = false;
     });
-    // persist
+    
     movieSeats[movieId] = seats;
 }
 
-// render movie cards
 function renderMovies() {
     const grid = document.getElementById('movieGrid');
     grid.innerHTML = '';
@@ -96,8 +87,7 @@ function openBookingModal(movieId) {
     const modalBody = document.getElementById('modalBody');
     const seats = getSeatsForMovie(movie.id);
     
-    // build seat grid UI
-    let selectedSeats = []; // temporary for this session
+    let selectedSeats = []; 
     let seatElements = new Map();
 
     function renderSeatSelection() {
@@ -118,7 +108,7 @@ function openBookingModal(movieId) {
         <button class="confirm-btn" id="finalBookingBtn">Add to Cart & Book</button>`;
         modalBody.innerHTML = html;
         const gridContainer = document.getElementById('dynamicSeatGrid');
-        // render seats dynamically
+      
         for (let r = 0; r < 6; r++) {
             for (let c = 0; c < 8; c++) {
                 const seat = seats.find(s => s.row === r && s.col === c);
@@ -138,7 +128,7 @@ function openBookingModal(movieId) {
                             } else {
                                 selectedSeats.push(seat.id);
                             }
-                            renderSeatSelection(); // re-render fresh
+                            renderSeatSelection(); 
                         });
                     }
                     gridContainer.appendChild(seatDiv);
@@ -155,13 +145,13 @@ function openBookingModal(movieId) {
                 alert('Please select at least one seat.');
                 return;
             }
-            // add to cart
+            
             const existingCartIdx = cart.findIndex(item => item.movieId === movie.id && JSON.stringify(item.seats.sort()) === JSON.stringify(selectedSeats.sort()));
             if (existingCartIdx !== -1) {
                 alert('These exact seats are already in your cart!');
                 return;
             }
-            // also check if any of selected seats are now unavailable due to race? but we check again
+        
             const freshSeats = getSeatsForMovie(movie.id);
             const conflict = selectedSeats.some(seatId => {
                 const seatObj = freshSeats.find(s => s.id === seatId);
@@ -169,14 +159,13 @@ function openBookingModal(movieId) {
             });
             if (conflict) {
                 alert('Sorry, some seats became unavailable. Please re-select.');
-                // refresh seat map and close/reopen? simpler: re-render modal
+               
                 openBookingModal(movie.id);
                 return;
             }
-            // commit temporary: mark as taken in local seat map (but not persistent until checkout? For multi-cart we should reserve. To keep demo clean: mark as taken immediately after adding to cart)
-            // BUT we have to allow cart cancellation? We'll implement removal from cart releases seats. So we mark taken after add but also allow revert on remove.
+           
             markSeatsAsTaken(movie.id, selectedSeats);
-            // add cart item
+           
             const cartItem = {
                 id: Date.now() + Math.random(),
                 movieId: movie.id,
@@ -190,7 +179,7 @@ function openBookingModal(movieId) {
             updateCartBadge();
             alert(`Added ${selectedSeats.length} ticket(s) for ${movie.title} (Seats: ${selectedSeats.join(', ')})`);
             closeModal();
-            renderMovies(); // refresh no visual needed, but seat map updated for next bookings.
+            renderMovies(); 
         };
     }
     renderSeatSelection();
@@ -231,7 +220,7 @@ function renderCartModal() {
             const idx = parseInt(btn.getAttribute('data-idx'));
             if (!isNaN(idx) && cart[idx]) {
                 const removed = cart[idx];
-                // release seats back to availability
+               
                 const movieSeatMap = getSeatsForMovie(removed.movieId);
                 removed.seats.forEach(seatId => {
                     const seat = movieSeatMap.find(s => s.id === seatId);
@@ -239,8 +228,7 @@ function renderCartModal() {
                 });
                 cart.splice(idx, 1);
                 updateCartBadge();
-                renderCartModal();   // refresh cart view
-                // also persist seat changes globally
+                renderCartModal();  
             }
         });
     });
@@ -257,7 +245,6 @@ function closeModal() {
     currentMovieForModal = null;
 }
 
-// Checkout: confirm all tickets (finalize)
 function checkout() {
     if (cart.length === 0) {
         alert('No tickets in cart.');
@@ -270,12 +257,11 @@ function checkout() {
     updateCartBadge();
     renderCartModal();
     closeModal();
-    // reset all seat maps? No, but we keep them as taken because already taken upon adding to cart. That's correct.
-    // we also need to reflect final state, but seats are already taken in memory. Perfect.
-    renderMovies(); // refresh UI
+    
+    renderMovies(); 
 }
 
-// event listeners
+
 document.getElementById('openCartBtn').addEventListener('click', openCartModal);
 document.getElementById('closeModalBtn').addEventListener('click', closeModal);
 document.getElementById('closeCartBtn').addEventListener('click', closeModal);
@@ -285,7 +271,6 @@ window.addEventListener('click', (e) => {
     if (e.target === document.getElementById('cartModal')) closeModal();
 });
 
-// init
 function init() {
     renderMovies();
     updateCartBadge();
